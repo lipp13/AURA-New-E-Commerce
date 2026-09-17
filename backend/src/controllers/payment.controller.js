@@ -1,8 +1,19 @@
 import {
   uploadPaymentProofService,
   getPaymentProofService,
+  simulateOrderPaymentService,
 } from '../services/payment.service.js';
 import { successResponse, errorResponse } from '../utils/response.js';
+
+export async function simulatePayment(req, res, next) {
+  try {
+    const { id: orderId } = req.params;
+    const result = await simulateOrderPaymentService(req.user.id, orderId);
+    return successResponse(res, result.message, result.order, 200);
+  } catch (err) {
+    return errorResponse(res, err.message, err, 400);
+  }
+}
 
 export async function uploadPaymentProof(req, res, next) {
   try {

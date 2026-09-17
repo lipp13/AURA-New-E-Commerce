@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  onboardSeller,
   getStore,
   updateStore,
   getProducts,
@@ -16,7 +17,10 @@ import { uploadProductImage, uploadAvatar, handleUploadError } from '../middlewa
 
 const router = Router();
 
-// Protect all routes: Require Auth & Seller Role
+// Onboard user to Seller (requires authentication only)
+router.post('/onboard', requireAuth, onboardSeller);
+
+// Protect all subsequent routes: Require Auth & Seller Role
 router.use(requireAuth, requireSeller);
 
 // Store Profile

@@ -2,16 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { Breadcrumb } from '../components/common/Breadcrumb';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
-import { Package, User, MapPin, Bell, KeyRound, LogOut, ArrowRight } from 'lucide-react';
+import { Package, User, MapPin, Bell, KeyRound, LogOut, ArrowRight, Store, QrCode } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
+import { formatPrice } from '../utils/formatters';
+import { OrderTrackingStepper } from '../components/order/OrderTrackingStepper';
+import { QRISPaymentModal } from '../components/modals/QRISPaymentModal';
 
 export const DashboardPage = () => {
-  const { currentUser, isAuthenticated, logout, updateProfile, updatePassword, openAuthModal, orders } = useAuth();
+  const { currentUser, isAuthenticated, logout, updateProfile, updatePassword, openAuthModal, orders, updateOrderStatusLocal } = useAuth();
   const { addToast } = useToast();
 
   const [tab, setTab] = useState('orders'); // 'orders' | 'profile' | 'addresses' | 'notifications' | 'settings'
+  const [isQRISOpen, setIsQRISOpen] = useState(false);
+  const [selectedQRISOrder, setSelectedQRISOrder] = useState(null);
+
+  const handleOpenQRISModal = (order) => {
+    setSelectedQRISOrder(order);
+    setIsQRISOpen(true);
+  };
 
   // Filter orders belonging to the current user
   const userOrders = orders.filter(
@@ -124,14 +134,29 @@ export const DashboardPage = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-6 font-mono text-xs uppercase tracking-widest self-stretch sm:self-auto justify-between sm:justify-end border-t sm:border-t-0 pt-4 sm:pt-0 border-[#D8D2C6]">
-          <div className="text-left sm:text-right">
-            <span className="text-[#6B675F] block text-[10px]">PESANAN TERCATAT</span>
-            <span className="text-xl font-bold text-[#171717]">{userOrders.length}</span>
-          </div>
+        <div className="flex flex-wrap items-center gap-3 font-mono text-xs uppercase tracking-widest self-stretch sm:self-auto justify-between sm:justify-end border-t sm:border-t-0 pt-4 sm:pt-0 border-[#D8D2C6]">
+          {/* Quick Access to Seller Portal */}
+          {currentUser?.role === 'seller' ? (
+            <Link
+              to="/seller"
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-[#171717] text-[#F5F1E8] hover:bg-[#F4512A] transition-colors font-bold text-[11px]"
+            >
+              <Store className="w-3.5 h-3.5" />
+              <span>Portal Penjual →</span>
+            </Link>
+          ) : (
+            <Link
+              to="/seller/register"
+              className="flex items-center gap-1.5 px-3.5 py-2 border border-[#171717] text-[#171717] hover:bg-[#171717] hover:text-[#F5F1E8] transition-colors text-[11px]"
+            >
+              <Store className="w-3.5 h-3.5" />
+              <span>Buka Toko Sendiri</span>
+            </Link>
+          )}
+
           <button
             onClick={logout}
-            className="flex items-center gap-1.5 text-rose-700 hover:text-rose-900 border border-rose-700/30 px-4 py-2 hover:border-rose-700 transition-colors"
+            className="flex items-center gap-1.5 text-rose-700 hover:text-rose-900 border border-rose-700/30 px-3.5 py-2 hover:border-rose-700 transition-colors text-[11px]"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Keluar</span>
@@ -212,17 +237,24 @@ export const DashboardPage = () => {
                       <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 font-mono text-xs">
                         <div className="flex items-baseline gap-3">
                           <span className="font-bold text-[#171717]">REF: #{order.id}</span>
-                          <span className="text-[#6B675F]">• {order.date}</span>
+                          <span className="text-[#6B675F]">• {order.date || 'Tercatat'}</span>
                         </div>
                         <span className={`px-2.5 py-1 text-[10px] font-mono uppercase tracking-widest ${
-                          order.status === 'Diproses' || order.status === 'Processing'
+                          order.status === 'Diproses' || order.status === 'processing'
                             ? 'bg-[#171717] text-[#F5F1E8]'
-                            : order.status === 'Dalam Pengiriman' || order.status === 'In Transit'
+                            : order.status === 'Dalam Pengiriman' || order.status === 'shipped'
                             ? 'bg-[#F4512A] text-white'
+                            : order.status === 'pending'
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
                             : 'border border-[#171717] text-[#171717]'
                         }`}>
                           [{order.status}]
                         </span>
+                      </div>
+
+                      {/* Visual Order Progress Stepper */}
+                      <div className="py-2 border-y border-[#D8D2C6]/60">
+                        <OrderTrackingStepper status={order.status} notes={order.tracking || order.notes} />
                       </div>
 
                       <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 font-mono text-xs">
@@ -230,13 +262,28 @@ export const DashboardPage = () => {
                           <p className="text-[#171717] font-bold">
                             {Array.isArray(order.items) ? order.items.join(', ') : order.items}
                           </p>
-                          <p className="text-[#6B675F] text-[11px]">
-                            NO. RESI: {order.tracking}
-                          </p>
+                          {order.tracking && (
+                            <p className="text-[#6B675F] text-[11px]">
+                              NO. RESI: <strong className="text-[#171717]">{order.tracking}</strong>
+                            </p>
+                          )}
                         </div>
-                        <span className="font-mono text-base font-bold text-[#171717]">
-                          ${order.total}
-                        </span>
+
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-base font-bold text-[#171717]">
+                            {formatPrice(order.total)}
+                          </span>
+
+                          {order.status?.toLowerCase() === 'pending' && (
+                            <button
+                              onClick={() => handleOpenQRISModal(order)}
+                              className="px-3 py-1.5 bg-[#171717] text-[#F5F1E8] hover:bg-[#F4512A] transition-colors text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5"
+                            >
+                              <QrCode className="w-3.5 h-3.5" />
+                              <span>Bayar (QRIS)</span>
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -388,6 +435,18 @@ export const DashboardPage = () => {
           )}
         </main>
       </div>
+
+      {/* Interactive QRIS Payment Modal for Pending Orders */}
+      <QRISPaymentModal
+        isOpen={isQRISOpen}
+        onClose={() => setIsQRISOpen(false)}
+        order={selectedQRISOrder}
+        onPaymentSuccess={(updated) => {
+          if (selectedQRISOrder?.id) {
+            updateOrderStatusLocal(selectedQRISOrder.id, 'processing');
+          }
+        }}
+      />
     </div>
   );
 };

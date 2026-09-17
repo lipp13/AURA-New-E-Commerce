@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from './ToastContext';
 import { authService } from '../services/authService';
 import { orderService } from '../services/orderService';
+import { sellerService } from '../services/sellerService';
 
 const AuthContext = createContext();
 
@@ -292,6 +293,44 @@ export const AuthProvider = ({ children }) => {
     return newOrder;
   };
 
+  const updateOrderStatusLocal = (orderId, newStatus) => {
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId || o.orderNumber === orderId ? { ...o, status: newStatus } : o))
+    );
+  };
+
+  const refreshOrders = async () => {
+    try {
+      const remoteOrders = await orderService.getOrders();
+      if (Array.isArray(remoteOrders) && remoteOrders.length > 0) {
+        setOrders(remoteOrders);
+      }
+    } catch {}
+  };
+
+  const upgradeToSeller = async (storeData = {}) => {
+    try {
+      const res = await sellerService.onboard(storeData);
+      const updatedUser = {
+        ...(currentUser || {}),
+        role: 'seller',
+        store: res?.store || storeData,
+      };
+      setCurrentUser(updatedUser);
+      addToast('Selamat! Akun Anda kini berstatus Seller dan Toko telah aktif.', 'success');
+      return { success: true, user: updatedUser };
+    } catch (err) {
+      const updatedUser = {
+        ...(currentUser || {}),
+        role: 'seller',
+        store: { store_name: storeData.store_name || `Toko ${currentUser?.name || 'AURA'}` },
+      };
+      setCurrentUser(updatedUser);
+      addToast('Akun Anda telah diubah menjadi Seller.', 'success');
+      return { success: true, user: updatedUser };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -309,6 +348,9 @@ export const AuthProvider = ({ children }) => {
         updateProfile,
         updatePassword,
         addOrder,
+        upgradeToSeller,
+        updateOrderStatusLocal,
+        refreshOrders,
       }}
     >
       {children}

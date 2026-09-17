@@ -82,4 +82,14 @@ export const orderService = {
 
     return json?.data || json;
   },
+
+  /**
+   * Simulate instant payment completion (POST /api/payments/orders/:id/simulate)
+   * @param {string} orderId
+   * @returns {Promise<object>}
+   */
+  async simulatePayment(orderId) {
+    const res = await api.post(`payments/orders/${orderId}/simulate`);
+    return res?.data || res;
+  },
 };

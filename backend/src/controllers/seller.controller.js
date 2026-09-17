@@ -1,6 +1,7 @@
 import {
   getSellerStoreService,
   updateSellerStoreService,
+  onboardSellerService,
   getSellerProductsService,
   getSellerProductByIdService,
   createSellerProductService,
@@ -10,6 +11,17 @@ import {
   updateSellerOrderStatusService,
 } from '../services/seller.service.js';
 import { successResponse, errorResponse, validationResponse } from '../utils/response.js';
+
+// ─── Seller Onboarding (Upgrade Role) ───────────────────────
+export async function onboardSeller(req, res, next) {
+  try {
+    const { store_name, description, phone, address } = req.body;
+    const result = await onboardSellerService(req.user.id, { store_name, description, phone, address });
+    return successResponse(res, 'Selamat! Toko Anda berhasil dibuka dan akun Anda kini berstatus Seller.', result, 201);
+  } catch (err) {
+    return errorResponse(res, err.message, err, 400);
+  }
+}
 
 // ─── Store Profile ──────────────────────────────────────────
 export async function getStore(req, res, next) {
@@ -104,13 +116,13 @@ export async function getOrders(req, res, next) {
 export async function updateOrderStatus(req, res, next) {
   try {
     const { id: orderId } = req.params;
-    const { status } = req.body;
+    const { status, tracking_number } = req.body;
 
     if (!status) {
       return validationResponse(res, { status: 'Status baru wajib disertakan (processing, shipped, delivered, completed).' });
     }
 
-    const updated = await updateSellerOrderStatusService(req.user.id, orderId, status);
+    const updated = await updateSellerOrderStatusService(req.user.id, orderId, status, tracking_number);
     return successResponse(res, `Status pesanan berhasil diperbarui ke "${status}".`, updated, 200);
   } catch (err) {
     return errorResponse(res, err.message, err, 400);

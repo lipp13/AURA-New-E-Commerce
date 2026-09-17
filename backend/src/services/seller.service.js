@@ -355,9 +355,73 @@ export async function getSellerOrdersService(sellerId) {
 }
 
 /**
+ * Onboard a user as seller: upgrades user role to 'seller' and creates/updates their store
+ */
+export async function onboardSellerService(userId, storeData = {}) {
+  const { store_name, description, phone, address } = storeData;
+
+  // 1. Upgrade user role in profiles
+  const { data: updatedProfile, error: profileErr } = await supabaseAdmin
+    .from('profiles')
+    .update({
+      role: 'seller',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId)
+    .select()
+    .single();
+
+  if (profileErr) {
+    throw new Error(`Gagal memperbarui status akun menjadi Seller: ${profileErr.message}`);
+  }
+
+  // 2. Check if store already exists
+  const { data: existingStore } = await supabaseAdmin
+    .from('stores')
+    .select('*')
+    .eq('seller_id', userId)
+    .single();
+
+  let storeResult = null;
+  const storePayload = {
+    seller_id: userId,
+    store_name: (store_name && store_name.trim()) || `Toko ${updatedProfile.name || 'AURA'}`,
+    description: (description && description.trim()) || 'Toko kurasi objek dan desain AURA.',
+    phone: phone ? phone.trim() : updatedProfile.phone,
+    address: address ? address.trim() : null,
+    is_active: true,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (existingStore) {
+    const { data: updatedStore, error: storeUpdErr } = await supabaseAdmin
+      .from('stores')
+      .update(storePayload)
+      .eq('id', existingStore.id)
+      .select()
+      .single();
+    if (storeUpdErr) throw new Error(`Gagal memperbarui toko: ${storeUpdErr.message}`);
+    storeResult = updatedStore;
+  } else {
+    const { data: newStore, error: storeInsErr } = await supabaseAdmin
+      .from('stores')
+      .insert(storePayload)
+      .select()
+      .single();
+    if (storeInsErr) throw new Error(`Gagal membuat toko: ${storeInsErr.message}`);
+    storeResult = newStore;
+  }
+
+  return {
+    user: updatedProfile,
+    store: storeResult,
+  };
+}
+
+/**
  * Update order status by Seller (e.g. processing -> shipped -> delivered -> completed)
  */
-export async function updateSellerOrderStatusService(sellerId, orderId, newStatus) {
+export async function updateSellerOrderStatusService(sellerId, orderId, newStatus, trackingNumber = null) {
   const allowedStatuses = ['processing', 'shipped', 'delivered', 'completed'];
   if (!allowedStatuses.includes(newStatus)) {
     throw new Error(`Status tidak valid. Pilihan status: ${allowedStatuses.join(', ')}`);
@@ -378,18 +442,23 @@ export async function updateSellerOrderStatusService(sellerId, orderId, newStatu
 
   const currentStatus = item.order.status;
 
-  // Seller can only process orders that have been accepted by Admin
-  if (!['accepted', 'processing', 'shipped', 'delivered'].includes(currentStatus)) {
+  // Seller can process orders that are pending, accepted, processing, or shipped
+  if (!['pending', 'accepted', 'processing', 'shipped', 'delivered'].includes(currentStatus)) {
     throw new Error(`Pesanan berstatus "${currentStatus}" tidak dapat diproses oleh seller.`);
   }
 
   // 2. Update order status
+  const updatePayload = {
+    status: newStatus,
+    updated_at: new Date().toISOString(),
+  };
+  if (trackingNumber && trackingNumber.trim()) {
+    updatePayload.notes = `Resi: ${trackingNumber.trim()}`;
+  }
+
   const { data: updated, error } = await supabaseAdmin
     .from('orders')
-    .update({
-      status: newStatus,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq('id', orderId)
     .select()
     .single();
@@ -407,7 +476,7 @@ export async function updateSellerOrderStatusService(sellerId, orderId, newStatu
 
   const statusMessages = {
     processing: '📦 Pesanan Anda sedang dipersiapkan dan dikemas oleh Seller.',
-    shipped: '🚚 Pesanan Anda telah diserahkan ke pihak ekspedisi dan dalam proses pengiriman.',
+    shipped: `🚚 Pesanan Anda telah diserahkan ke pihak ekspedisi${trackingNumber ? ` (No. Resi: ${trackingNumber.trim()})` : ''} dan dalam proses pengiriman.`,
     delivered: '📬 Pesanan Anda telah sampai di alamat tujuan.',
     completed: '🎉 Pesanan telah selesai. Terima kasih telah berbelanja di ShopKu!',
   };

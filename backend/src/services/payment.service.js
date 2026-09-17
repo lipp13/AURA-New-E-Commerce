@@ -119,3 +119,78 @@ export async function getPaymentProofService(orderId) {
 
   return proof;
 }
+
+/**
+ * Simulate instant payment completion for QRIS or Bank Transfer
+ */
+export async function simulateOrderPaymentService(userId, orderId) {
+  // 1. Get and verify order
+  const order = await getUserOrderByIdService(userId, orderId);
+
+  if (['processing', 'shipped', 'delivered', 'completed'].includes(order.status)) {
+    return {
+      order,
+      message: 'Pesanan ini sudah dibayar sebelumnya.',
+    };
+  }
+
+  // 2. Update order status to 'processing' (paid and being prepared)
+  const { data: updatedOrder, error: orderErr } = await supabaseAdmin
+    .from('orders')
+    .update({
+      status: 'processing',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', order.id)
+    .select()
+    .single();
+
+  if (orderErr) {
+    throw new Error(`Gagal memproses pembayaran pesanan: ${orderErr.message}`);
+  }
+
+  // 3. Find or create conversation thread
+  let { data: conv } = await supabaseAdmin
+    .from('conversations')
+    .select('id')
+    .eq('order_id', order.id)
+    .single();
+
+  if (!conv) {
+    const { data: newConv } = await supabaseAdmin
+      .from('conversations')
+      .insert({ order_id: order.id, user_id: userId })
+      .select('id')
+      .single();
+    conv = newConv;
+  }
+
+  // 4. Send confirmation message
+  if (conv) {
+    await supabaseAdmin
+      .from('messages')
+      .insert({
+        conversation_id: conv.id,
+        sender_id: userId,
+        sender_role: 'system',
+        message: `✅ Pembayaran pesanan ${order.orderNumber} sebesar Rp ${order.total.toLocaleString('id-ID')} telah berhasil diverifikasi via ${order.paymentMethod === 'qris' ? 'QRIS Instant' : 'Transfer Bank'}. Pesanan siap diproses oleh penjual.`,
+        is_system: true,
+      });
+  }
+
+  // 5. Create notification for buyer
+  await supabaseAdmin
+    .from('notifications')
+    .insert({
+      user_id: userId,
+      title: 'Pembayaran Berhasil Diterima',
+      message: `Pembayaran untuk pesanan ${order.orderNumber} telah kami terima. Penjual sedang menyiapkan barang Anda.`,
+      type: 'payment_success',
+      reference_id: order.orderNumber,
+    });
+
+  return {
+    order: updatedOrder,
+    message: 'Pembayaran berhasil dikonfirmasi! Pesanan sedang dipersiapkan.',
+  };
+}

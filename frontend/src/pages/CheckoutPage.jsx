@@ -5,9 +5,10 @@ import { useAuth } from '../context/AuthContext';
 import { Breadcrumb } from '../components/common/Breadcrumb';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
-import { CreditCard, Landmark, Wallet, Truck, Check, User } from 'lucide-react';
+import { CreditCard, Landmark, Wallet, Truck, Check, User, QrCode } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { formatPrice } from '../utils/formatters';
+import { QRISPaymentModal } from '../components/modals/QRISPaymentModal';
 
 export const CheckoutPage = () => {
   const { cart, grandTotal, clearCart } = useCart();
@@ -16,6 +17,7 @@ export const CheckoutPage = () => {
 
   const [step, setStep] = useState(1); // 1: Shipping, 2: Payment, 3: Review, 4: Success
   const [completedOrder, setCompletedOrder] = useState(null);
+  const [isQRISModalOpen, setIsQRISModalOpen] = useState(false);
 
   // Form State
   const [shippingData, setShippingData] = useState({
@@ -303,14 +305,47 @@ export const CheckoutPage = () => {
               <span className="font-bold text-[#171717]">{completedOrder?.id}</span>
             </div>
             <div className="flex justify-between border-b border-[#D8D2C6] pb-2">
-              <span className="text-[#6B675F]">NOMOR RESI PENGIRIMAN:</span>
-              <span className="font-bold text-[#171717]">{completedOrder?.tracking}</span>
+              <span className="text-[#6B675F]">STATUS PEMBAYARAN:</span>
+              <span className={`font-bold uppercase ${completedOrder?.status === 'processing' ? 'text-emerald-700' : 'text-amber-700'}`}>
+                {completedOrder?.status === 'processing' ? 'Lunas & Dipersiapkan' : 'Menunggu Verifikasi / Bayar'}
+              </span>
+            </div>
+            <div className="flex justify-between border-b border-[#D8D2C6] pb-2">
+              <span className="text-[#6B675F]">METODE:</span>
+              <span className="font-bold text-[#171717] uppercase">{completedOrder?.paymentMethod || paymentMethod}</span>
             </div>
             <div className="flex justify-between pt-1">
               <span className="text-[#6B675F]">ESTIMASI PENGANTARAN:</span>
               <span className="text-[#171717]">2–3 Hari Kerja</span>
             </div>
           </div>
+
+          {/* QRIS / Interactive Payment Banner */}
+          {completedOrder?.status !== 'processing' && (
+            <div className="p-6 border-2 border-[#171717] bg-[#FFFFFF] text-left space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <QrCode className="w-5 h-5 text-[#F4512A]" />
+                  <span className="font-mono text-xs font-bold text-[#171717] uppercase tracking-wider">
+                    Selesaikan Pembayaran QRIS / Bank
+                  </span>
+                </div>
+                <span className="font-mono text-[10px] text-amber-800 bg-amber-100 px-2 py-0.5 font-bold uppercase">
+                  Pending
+                </span>
+              </div>
+              <p className="font-mono text-xs text-[#6B675F]">
+                Pindai kode QR atau lakukan simulasi pembayaran lunas instan dengan satu kali klik.
+              </p>
+              <button
+                onClick={() => setIsQRISModalOpen(true)}
+                className="w-full py-3 px-4 bg-[#171717] text-[#F5F1E8] hover:bg-[#F4512A] transition-colors font-mono text-xs uppercase tracking-widest font-bold flex items-center justify-center gap-2"
+              >
+                <QrCode className="w-4 h-4" />
+                <span>Buka Kode QRIS &amp; Simulasi Bayar →</span>
+              </button>
+            </div>
+          )}
 
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <Button fullWidth onClick={() => navigate('/dashboard')}>
@@ -322,6 +357,16 @@ export const CheckoutPage = () => {
           </div>
         </div>
       )}
+
+      {/* QRIS Interactive Payment Modal */}
+      <QRISPaymentModal
+        isOpen={isQRISModalOpen}
+        onClose={() => setIsQRISModalOpen(false)}
+        order={completedOrder}
+        onPaymentSuccess={(updated) => {
+          setCompletedOrder(updated);
+        }}
+      />
     </div>
   );
 };

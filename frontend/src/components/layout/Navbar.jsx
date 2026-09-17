@@ -10,7 +10,8 @@ import {
   X,
   Scale,
   LogOut,
-  ChevronDown
+  ChevronDown,
+  Store
 } from "lucide-react";
 import { useCart } from "../../context/CartContext";
 import { useWishlist } from "../../context/WishlistContext";
@@ -205,6 +206,34 @@ export const Navbar = () => {
                             <span>Dasbor &amp; Pesanan</span>
                             <span className="text-[#6B675F]">→</span>
                           </Link>
+
+                          {/* Seller Portal / Buka Toko Link */}
+                          {currentUser?.role === 'seller' ? (
+                            <Link
+                              to="/seller"
+                              onClick={() => setIsUserMenuOpen(false)}
+                              className="flex items-center justify-between text-xs uppercase tracking-wider text-[#171717] hover:text-[#F4512A] transition-colors font-bold"
+                            >
+                              <span className="flex items-center gap-1.5">
+                                <Store className="w-3.5 h-3.5 text-[#F4512A]" />
+                                Portal Penjual
+                              </span>
+                              <span className="text-[#6B675F]">→</span>
+                            </Link>
+                          ) : (
+                            <Link
+                              to="/seller/register"
+                              onClick={() => setIsUserMenuOpen(false)}
+                              className="flex items-center justify-between text-xs uppercase tracking-wider text-[#171717] hover:text-[#F4512A] transition-colors"
+                            >
+                              <span className="flex items-center gap-1.5">
+                                <Store className="w-3.5 h-3.5" />
+                                Buka Toko Sendiri
+                              </span>
+                              <span className="text-[#6B675F]">→</span>
+                            </Link>
+                          )}
+
                           <Link
                             to="/wishlist"
                             onClick={() => setIsUserMenuOpen(false)}
@@ -311,12 +340,19 @@ export const Navbar = () => {
                       >
                         Dasbor Akun ({currentUser?.name})
                       </Link>
+                      <Link
+                        to={currentUser?.role === 'seller' ? '/seller' : '/seller/register'}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="block text-xs uppercase tracking-widest font-bold text-[#F4512A]"
+                      >
+                        {currentUser?.role === 'seller' ? '● Portal Penjual' : '+ Buka Toko Sendiri'}
+                      </Link>
                       <button
                         onClick={() => {
                           setIsMobileMenuOpen(false);
                           logout();
                         }}
-                        className="text-xs uppercase tracking-widest text-rose-700 hover:underline"
+                        className="text-xs uppercase tracking-widest text-rose-700 hover:underline block"
                       >
                         Keluar
                       </button>

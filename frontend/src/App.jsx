@@ -26,6 +26,8 @@ import { CheckoutPage } from './pages/CheckoutPage';
 import { WishlistPage } from './pages/WishlistPage';
 import { ComparePage } from './pages/ComparePage';
 import { DashboardPage } from './pages/DashboardPage';
+import { SellerDashboardPage } from './pages/SellerDashboardPage';
+import { SellerOnboardingPage } from './pages/SellerOnboardingPage';
 import { AboutPage } from './pages/AboutPage';
 import { ContactPage } from './pages/ContactPage';
 import { LoginPage } from './pages/LoginPage';
@@ -61,6 +63,8 @@ const AnimatedRoutes = () => {
         <Route path="/wishlist" element={<PageTransition><WishlistPage /></PageTransition>} />
         <Route path="/compare" element={<PageTransition><ComparePage /></PageTransition>} />
         <Route path="/dashboard" element={<PageTransition><DashboardPage /></PageTransition>} />
+        <Route path="/seller" element={<PageTransition><SellerDashboardPage /></PageTransition>} />
+        <Route path="/seller/register" element={<PageTransition><SellerOnboardingPage /></PageTransition>} />
         <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
         <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
         <Route path="/about" element={<PageTransition><AboutPage /></PageTransition>} />
