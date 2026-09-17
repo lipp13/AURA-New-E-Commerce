@@ -37,14 +37,9 @@ import { NotFoundPage } from './pages/NotFoundPage';
 // Scroll to Top helper on route changes
 const ScrollToTop = () => {
   const { pathname } = useLocation();
-  const { lenis } = useSmoothScroll();
   useEffect(() => {
-    if (lenis) {
-      lenis.scrollTo(0, { immediate: true });
-    } else {
-      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    }
-  }, [pathname, lenis]);
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [pathname]);
   return null;
 };
 

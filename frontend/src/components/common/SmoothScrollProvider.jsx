@@ -1,60 +1,30 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import Lenis from 'lenis';
-import 'lenis/dist/lenis.css';
+import React, { createContext, useContext } from 'react';
 
 const SmoothScrollContext = createContext({
   lenis: null,
   scrollTo: () => {},
 });
 
+/**
+ * High-Performance Native 120fps Scroll Provider
+ * Uses direct hardware-accelerated browser scroll without virtual momentum damping or inertia lag.
+ */
 export const SmoothScrollProvider = ({ children }) => {
-  const [lenisInstance, setLenisInstance] = useState(null);
-
-  useEffect(() => {
-    // Initialize Lenis for luxurious buttery-smooth scrolling
-    const lenis = new Lenis({
-      duration: 1.2,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      orientation: 'vertical',
-      gestureOrientation: 'vertical',
-      smoothWheel: true,
-      wheelMultiplier: 1,
-      touchMultiplier: 1.5,
-      infinite: false,
-    });
-
-    setLenisInstance(lenis);
-
-    let rafId;
-    function raf(time) {
-      lenis.raf(time);
-      rafId = requestAnimationFrame(raf);
-    }
-
-    rafId = requestAnimationFrame(raf);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      lenis.destroy();
-      setLenisInstance(null);
-    };
-  }, []);
-
   const scrollTo = (target, options = {}) => {
-    if (lenisInstance) {
-      lenisInstance.scrollTo(target, { duration: 1.2, ...options });
-    } else {
-      if (typeof target === 'number') {
-        window.scrollTo({ top: target, behavior: 'smooth' });
-      } else if (typeof target === 'string') {
-        const el = document.querySelector(target);
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
-      }
+    const behavior = options.immediate ? 'auto' : 'smooth';
+
+    if (typeof target === 'number') {
+      window.scrollTo({ top: target, behavior });
+    } else if (typeof target === 'string') {
+      const el = document.querySelector(target);
+      if (el) el.scrollIntoView({ behavior });
+    } else if (target instanceof HTMLElement) {
+      target.scrollIntoView({ behavior });
     }
   };
 
   return (
-    <SmoothScrollContext.Provider value={{ lenis: lenisInstance, scrollTo }}>
+    <SmoothScrollContext.Provider value={{ lenis: null, scrollTo }}>
       {children}
     </SmoothScrollContext.Provider>
   );

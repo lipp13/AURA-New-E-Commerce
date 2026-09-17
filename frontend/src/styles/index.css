@@ -1,34 +1,11 @@
-@import 'lenis/dist/lenis.css';
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-html.lenis, html.lenis body {
-  height: auto;
-}
-
-html.lenis {
-  scroll-behavior: auto !important;
-}
-
-html:not(.lenis) {
-  scroll-behavior: smooth;
-}
-
-.lenis.lenis-smooth {
-  scroll-behavior: auto !important;
-}
-
-.lenis.lenis-smooth [data-lenis-prevent] {
-  overscroll-behavior: contain;
-}
-
-.lenis.lenis-stopped {
-  overflow: hidden;
-}
-
-.lenis.lenis-scrolling iframe {
-  pointer-events: none;
+/* Native 120fps Hardware-Accelerated Responsive Scrolling */
+html {
+  scroll-behavior: auto; /* 1:1 instant hardware response for 120Hz/144Hz high-refresh displays without virtual scroll lag */
+  -webkit-overflow-scrolling: touch;
 }
 
 @layer base {
