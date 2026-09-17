@@ -48,20 +48,56 @@ export const sellerService = {
   },
 
   /**
-   * Create a new product for seller store
-   * @param {{ name: string, category_id: string, price: number, stock: number, description: string, image: string, featured?: boolean }} productData
+   * Create a new product for seller store (supports JSON or FormData with image file)
+   * @param {object|FormData} productData
    */
   async createProduct(productData) {
+    if (productData instanceof FormData) {
+      const token = api.getToken();
+      const headers = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetch(`${api.baseUrl}/seller/products`, {
+        method: 'POST',
+        headers,
+        body: productData,
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.message || 'Gagal menambahkan produk.');
+      }
+      return json?.data || json;
+    }
+
     const res = await api.post('seller/products', productData);
     return res?.data || res;
   },
 
   /**
-   * Update existing product by seller
+   * Update existing product by seller (supports JSON or FormData with image file)
    * @param {string} productId
-   * @param {object} productData
+   * @param {object|FormData} productData
    */
   async updateProduct(productId, productData) {
+    if (productData instanceof FormData) {
+      const token = api.getToken();
+      const headers = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      const res = await fetch(`${api.baseUrl}/seller/products/${productId}`, {
+        method: 'PATCH',
+        headers,
+        body: productData,
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.message || 'Gagal memperbarui produk.');
+      }
+      return json?.data || json;
+    }
+
     const res = await api.patch(`seller/products/${productId}`, productData);
     return res?.data || res;
   },

@@ -21,13 +21,18 @@ import {
   ArrowRight,
   Eye,
   Settings,
-  AlertCircle
+  AlertCircle,
+  UploadCloud,
+  ImageIcon,
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { sellerService } from '../services/sellerService';
 import { ProductService } from '../services/ProductService';
 import { formatPrice } from '../utils/formatters';
+import { compressImage } from '../utils/imageCompressor';
 
 export const SellerDashboardPage = () => {
   const { currentUser, isAuthenticated, openAuthModal } = useAuth();
@@ -50,6 +55,12 @@ export const SellerDashboardPage = () => {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [trackingInput, setTrackingInput] = useState('');
+
+  // Image Upload & Auto-compression states
+  const [selectedImageFile, setSelectedImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState('');
+  const [compressionStats, setCompressionStats] = useState(null);
+  const [isCompressing, setIsCompressing] = useState(false);
 
   // Product Form State
   const [productForm, setProductForm] = useState({
@@ -190,6 +201,9 @@ export const SellerDashboardPage = () => {
       image: '',
       featured: false,
     });
+    setSelectedImageFile(null);
+    setImagePreview('');
+    setCompressionStats(null);
     setIsAddModalOpen(true);
   };
 
@@ -204,28 +218,83 @@ export const SellerDashboardPage = () => {
       image: product.image || '',
       featured: !!product.featured,
     });
+    setSelectedImageFile(null);
+    setImagePreview(product.image || '');
+    setCompressionStats(null);
     setIsEditModalOpen(true);
+  };
+
+  const handleImageFileSelect = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsCompressing(true);
+    try {
+      addToast('Mengompresi gambar produk secara otomatis...', 'info');
+      const compressed = await compressImage(file, {
+        maxWidth: 1200,
+        maxHeight: 1200,
+        quality: 0.82,
+        outputType: 'image/webp',
+      });
+
+      setSelectedImageFile(compressed.file);
+      setImagePreview(compressed.dataUrl);
+      setCompressionStats(compressed);
+      setProductForm((prev) => ({
+        ...prev,
+        image: compressed.dataUrl,
+      }));
+
+      addToast(
+        `Gambar berhasil dikompresi: ${compressed.originalFormatted} → ${compressed.compressedFormatted} (Hemat ${compressed.savingsPercent}%)`,
+        'success'
+      );
+    } catch (err) {
+      console.error('Image compression error:', err);
+      addToast(err.message || 'Gagal mengompresi gambar.', 'error');
+    } finally {
+      setIsCompressing(false);
+    }
   };
 
   const handleCreateProduct = async (e) => {
     e.preventDefault();
-    if (!productForm.name || !productForm.price || !productForm.image) {
-      addToast('Nama produk, harga, dan gambar wajib diisi.', 'error');
+    if (!productForm.name || !productForm.price) {
+      addToast('Nama produk dan harga wajib diisi.', 'error');
+      return;
+    }
+
+    if (!selectedImageFile && !productForm.image) {
+      addToast('Wajib mengunggah gambar produk dari galeri/penyimpanan perangkat.', 'error');
       return;
     }
 
     try {
-      const payload = {
-        name: productForm.name.trim(),
-        category_id: productForm.category_id,
-        price: Number(productForm.price),
-        stock: Number(productForm.stock || 0),
-        description: productForm.description.trim(),
-        image: productForm.image.trim(),
-        featured: productForm.featured,
-      };
+      if (selectedImageFile) {
+        const formData = new FormData();
+        formData.append('name', productForm.name.trim());
+        formData.append('category_id', productForm.category_id);
+        formData.append('price', Number(productForm.price));
+        formData.append('stock', Number(productForm.stock || 0));
+        formData.append('description', productForm.description.trim());
+        formData.append('featured', productForm.featured);
+        formData.append('image', selectedImageFile);
 
-      await sellerService.createProduct(payload);
+        await sellerService.createProduct(formData);
+      } else {
+        const payload = {
+          name: productForm.name.trim(),
+          category_id: productForm.category_id,
+          price: Number(productForm.price),
+          stock: Number(productForm.stock || 0),
+          description: productForm.description.trim(),
+          image: productForm.image.trim(),
+          featured: productForm.featured,
+        };
+        await sellerService.createProduct(payload);
+      }
+
       addToast('Produk berhasil ditambahkan ke katalog toko Anda!', 'success');
       setIsAddModalOpen(false);
       loadSellerData();
@@ -239,17 +308,30 @@ export const SellerDashboardPage = () => {
     if (!selectedProduct) return;
 
     try {
-      const payload = {
-        name: productForm.name.trim(),
-        category_id: productForm.category_id,
-        price: Number(productForm.price),
-        stock: Number(productForm.stock || 0),
-        description: productForm.description.trim(),
-        image: productForm.image.trim(),
-        featured: productForm.featured,
-      };
+      if (selectedImageFile) {
+        const formData = new FormData();
+        formData.append('name', productForm.name.trim());
+        formData.append('category_id', productForm.category_id);
+        formData.append('price', Number(productForm.price));
+        formData.append('stock', Number(productForm.stock || 0));
+        formData.append('description', productForm.description.trim());
+        formData.append('featured', productForm.featured);
+        formData.append('image', selectedImageFile);
 
-      await sellerService.updateProduct(selectedProduct.id, payload);
+        await sellerService.updateProduct(selectedProduct.id, formData);
+      } else {
+        const payload = {
+          name: productForm.name.trim(),
+          category_id: productForm.category_id,
+          price: Number(productForm.price),
+          stock: Number(productForm.stock || 0),
+          description: productForm.description.trim(),
+          image: productForm.image.trim(),
+          featured: productForm.featured,
+        };
+        await sellerService.updateProduct(selectedProduct.id, payload);
+      }
+
       addToast('Produk berhasil diperbarui.', 'success');
       setIsEditModalOpen(false);
       loadSellerData();
@@ -756,30 +838,74 @@ export const SellerDashboardPage = () => {
                   onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })}
                   required
                 />
-
-                <Input
-                  label="URL Gambar Produk *"
-                  placeholder="https://images.unsplash.com/..."
-                  value={productForm.image}
-                  onChange={(e) => setProductForm({ ...productForm, image: e.target.value })}
-                  required
-                />
               </div>
 
-              {/* Instant Image Preview */}
-              {productForm.image && (
-                <div className="p-3 border border-[#D8D2C6] bg-[#F5F1E8] flex items-center gap-3">
-                  <img
-                    src={productForm.image}
-                    alt="Pratinjau"
-                    className="w-12 h-12 object-cover border border-[#D8D2C6]"
-                    onError={(e) => (e.target.style.display = 'none')}
+              {/* Local File Picker & Auto-Compression Area */}
+              <div className="space-y-2">
+                <label className="font-mono text-xs uppercase tracking-wider text-[#171717] block">
+                  Foto Produk dari Galeri / Lokal (Wajib &amp; Auto-Kompres) *
+                </label>
+
+                <div className="border-2 border-dashed border-[#D8D2C6] hover:border-[#171717] p-5 text-center bg-[#F5F1E8] transition-colors relative cursor-pointer group">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageFileSelect}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                   />
-                  <span className="font-mono text-[10px] text-[#6B675F] truncate">
-                    Pratinjau gambar terverifikasi
-                  </span>
+                  <div className="flex flex-col items-center justify-center space-y-2">
+                    <div className="w-10 h-10 bg-[#FAF8F2] border border-[#D8D2C6] rounded-full flex items-center justify-center text-[#171717] group-hover:bg-[#171717] group-hover:text-[#F5F1E8] transition-colors">
+                      <UploadCloud className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="font-mono text-xs font-bold text-[#171717] uppercase tracking-wider">
+                        Pilih Foto dari Galeri / Perangkat
+                      </p>
+                      <p className="font-mono text-[10px] text-[#6B675F] mt-0.5">
+                        JPG, PNG, WEBP • Otomatis dikompres sebelum upload ke Supabase Storage
+                      </p>
+                    </div>
+                  </div>
                 </div>
-              )}
+
+                {/* Compression Progress & Preview */}
+                {isCompressing && (
+                  <div className="p-3 bg-amber-50 border border-amber-200 text-amber-900 font-mono text-xs flex items-center gap-2">
+                    <RefreshCw className="w-4 h-4 animate-spin text-amber-700" />
+                    <span>Mengompresi resolusi &amp; ukuran gambar...</span>
+                  </div>
+                )}
+
+                {imagePreview && (
+                  <div className="p-3 border border-[#D8D2C6] bg-[#FAF8F2] flex items-center justify-between gap-4 font-mono text-xs">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <img
+                        src={imagePreview}
+                        alt="Pratinjau Produk"
+                        className="w-14 h-14 object-cover border border-[#D8D2C6] shrink-0 bg-white"
+                      />
+                      <div className="min-w-0">
+                        <span className="font-bold text-[#171717] block truncate">
+                          {selectedImageFile?.name || 'Foto Produk Terpilih'}
+                        </span>
+                        {compressionStats && (
+                          <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                            <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded">
+                              ✓ Terkompres (-{compressionStats.savingsPercent}%)
+                            </span>
+                            <span className="text-[10px] text-[#6B675F]">
+                              {compressionStats.originalFormatted} → {compressionStats.compressedFormatted}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-mono uppercase text-[#F4512A] tracking-wider shrink-0">
+                      [Siap Upload]
+                    </span>
+                  </div>
+                )}
+              </div>
 
               <div className="space-y-1.5">
                 <label className="font-mono text-xs uppercase tracking-wider text-[#171717] block">
@@ -811,8 +937,8 @@ export const SellerDashboardPage = () => {
                 <Button variant="secondary" type="button" onClick={() => setIsAddModalOpen(false)}>
                   Batal
                 </Button>
-                <Button fullWidth type="submit">
-                  Tambahkan Produk →
+                <Button fullWidth type="submit" disabled={isCompressing}>
+                  {isCompressing ? 'Mengompresi Gambar...' : 'Tambahkan Produk →'}
                 </Button>
               </div>
             </form>
@@ -840,7 +966,7 @@ export const SellerDashboardPage = () => {
 
             <form onSubmit={handleUpdateProduct} className="space-y-4">
               <Input
-                label="Nama Produk"
+                label="Nama Produk *"
                 value={productForm.name}
                 onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
                 required
@@ -866,7 +992,7 @@ export const SellerDashboardPage = () => {
                 </div>
 
                 <Input
-                  label="Harga (Rp)"
+                  label="Harga (Rp) *"
                   type="number"
                   value={productForm.price}
                   onChange={(e) => setProductForm({ ...productForm, price: e.target.value })}
@@ -876,18 +1002,56 @@ export const SellerDashboardPage = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
-                  label="Stok Unit"
+                  label="Stok Unit *"
                   type="number"
                   value={productForm.stock}
                   onChange={(e) => setProductForm({ ...productForm, stock: e.target.value })}
                   required
                 />
-                <Input
-                  label="URL Gambar"
-                  value={productForm.image}
-                  onChange={(e) => setProductForm({ ...productForm, image: e.target.value })}
-                  required
-                />
+              </div>
+
+              {/* Edit Image Area */}
+              <div className="space-y-2">
+                <label className="font-mono text-xs uppercase tracking-wider text-[#171717] block">
+                  Ubah Foto Produk dari Galeri (Auto-Kompres)
+                </label>
+
+                <div className="border-2 border-dashed border-[#D8D2C6] hover:border-[#171717] p-4 text-center bg-[#F5F1E8] transition-colors relative cursor-pointer group">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageFileSelect}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                  />
+                  <div className="flex items-center justify-center gap-2">
+                    <UploadCloud className="w-4 h-4 text-[#171717]" />
+                    <span className="font-mono text-xs font-bold text-[#171717]">
+                      Klik untuk ganti foto dari galeri HP / komputer
+                    </span>
+                  </div>
+                </div>
+
+                {imagePreview && (
+                  <div className="p-3 border border-[#D8D2C6] bg-[#FAF8F2] flex items-center justify-between gap-4 font-mono text-xs">
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={imagePreview}
+                        alt="Pratinjau"
+                        className="w-12 h-12 object-cover border border-[#D8D2C6]"
+                      />
+                      <div>
+                        <span className="font-bold text-[#171717] block">
+                          {selectedImageFile ? selectedImageFile.name : 'Gambar saat ini'}
+                        </span>
+                        {compressionStats && (
+                          <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                            ✓ {compressionStats.originalFormatted} → {compressionStats.compressedFormatted} (-{compressionStats.savingsPercent}%)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1.5">
@@ -906,8 +1070,8 @@ export const SellerDashboardPage = () => {
                 <Button variant="secondary" type="button" onClick={() => setIsEditModalOpen(false)}>
                   Batal
                 </Button>
-                <Button fullWidth type="submit">
-                  Simpan Perubahan →
+                <Button fullWidth type="submit" disabled={isCompressing}>
+                  {isCompressing ? 'Mengompresi...' : 'Simpan Perubahan →'}
                 </Button>
               </div>
             </form>

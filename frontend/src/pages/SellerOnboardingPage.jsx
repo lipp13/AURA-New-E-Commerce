@@ -1,12 +1,12 @@
 // src/pages/SellerOnboardingPage.jsx
-// Onboarding page to open a store & upgrade to Seller role in AURA / OBJEK
+// Onboarding page to open a store & upgrade to Seller role in AURA / OBJEK with strict validation
 
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Breadcrumb } from '../components/common/Breadcrumb';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
-import { Store, ShieldCheck, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Store, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 
@@ -15,10 +15,12 @@ export const SellerOnboardingPage = () => {
   const { addToast } = useToast();
   const navigate = useNavigate();
 
-  const [storeName, setStoreName] = useState(`Toko ${currentUser?.name || ''}`);
-  const [description, setDescription] = useState('Studio kurasi objek keseharian dan peranti estetik kontemporer.');
+  const [storeName, setStoreName] = useState(currentUser?.name ? `Toko ${currentUser.name}` : '');
+  const [description, setDescription] = useState('');
   const [phone, setPhone] = useState(currentUser?.phone || '');
-  const [address, setAddress] = useState(currentUser?.address || '');
+  const [address, setAddress] = useState(currentUser?.address || currentUser?.city || '');
+  const [agreeTerms, setAgreeTerms] = useState(false);
+  const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // If already a seller, direct to seller portal
@@ -34,7 +36,7 @@ export const SellerOnboardingPage = () => {
             Toko Anda Sudah Terdaftar
           </h2>
           <p className="font-mono text-xs text-[#6B675F]">
-            Akun Anda sudah memiliki hak akses Seller. Silakan masuk ke Portal Penjual untuk mengelola katalog & pesanan.
+            Akun Anda sudah memiliki hak akses Seller. Silakan masuk ke Portal Penjual untuk mengelola katalog &amp; pesanan.
           </p>
         </div>
         <Button onClick={() => navigate('/seller')} fullWidth>
@@ -62,10 +64,43 @@ export const SellerOnboardingPage = () => {
     );
   }
 
+  const validateForm = () => {
+    const errs = {};
+    if (!storeName || !storeName.trim()) {
+      errs.storeName = 'Nama toko wajib diisi.';
+    } else if (storeName.trim().length < 3) {
+      errs.storeName = 'Nama toko minimal 3 karakter.';
+    }
+
+    if (!description || !description.trim()) {
+      errs.description = 'Deskripsi / profil toko wajib diisi.';
+    } else if (description.trim().length < 10) {
+      errs.description = 'Deskripsi toko minimal 10 karakter.';
+    }
+
+    if (!phone || !phone.trim()) {
+      errs.phone = 'Nomor telepon / WhatsApp toko wajib diisi.';
+    } else if (!/^[0-9+ -]{8,18}$/.test(phone.trim())) {
+      errs.phone = 'Format nomor telepon tidak valid (contoh: 08123456789).';
+    }
+
+    if (!address || !address.trim()) {
+      errs.address = 'Kota / Lokasi operasional toko wajib diisi.';
+    }
+
+    if (!agreeTerms) {
+      errs.agreeTerms = 'Anda harus menyetujui syarat & ketentuan mitra penjual.';
+    }
+
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!storeName.trim()) {
-      addToast('Nama toko wajib diisi.', 'error');
+
+    if (!validateForm()) {
+      addToast('Harap lengkapi semua kolom formulir pendaftaran toko yang wajib diisi.', 'error');
       return;
     }
 
@@ -79,8 +114,11 @@ export const SellerOnboardingPage = () => {
       });
 
       if (res.success) {
+        addToast('Selamat! Toko Anda berhasil dibuka dan akun telah menjadi Seller.', 'success');
         navigate('/seller');
       }
+    } catch (err) {
+      addToast(err.message || 'Gagal mendaftarkan toko.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -134,48 +172,120 @@ export const SellerOnboardingPage = () => {
           <div className="border border-[#D8D2C6] bg-[#FAF8F2] p-8 sm:p-10 shadow-sm space-y-6">
             <div className="border-b border-[#D8D2C6] pb-4">
               <span className="font-mono text-[10px] uppercase tracking-widest text-[#6B675F] block">
-                [Formulir Pendaftaran Toko]
+                [Formulir Pendaftaran Toko Wajib Diisi Lengkap]
               </span>
               <h2 className="font-display text-xl font-bold uppercase tracking-tight text-[#171717]">
                 Informasi Toko Anda
               </h2>
             </div>
 
+            {Object.keys(errors).length > 0 && (
+              <div className="p-4 border border-rose-300 bg-rose-50 text-rose-800 font-mono text-xs flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                <div>
+                  <strong className="block font-bold">Harap lengkapi semua data toko yang diperlukan:</strong>
+                  <ul className="list-disc list-inside mt-1 space-y-0.5">
+                    {Object.values(errors).map((err, i) => (
+                      <li key={i}>{err}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-5">
-              <Input
-                label="Nama Toko *"
-                placeholder="Contoh: Studio Objek Nusantara"
-                value={storeName}
-                onChange={(e) => setStoreName(e.target.value)}
-                required
-              />
+              <div>
+                <Input
+                  label="Nama Toko *"
+                  placeholder="Contoh: Studio Objek Nusantara"
+                  value={storeName}
+                  onChange={(e) => {
+                    setStoreName(e.target.value);
+                    if (errors.storeName) setErrors((prev) => ({ ...prev, storeName: null }));
+                  }}
+                  required
+                />
+                {errors.storeName && (
+                  <p className="font-mono text-[11px] text-rose-600 mt-1">⚠ {errors.storeName}</p>
+                )}
+              </div>
 
               <div className="space-y-1.5">
                 <label className="font-mono text-xs uppercase tracking-wider text-[#171717] block">
-                  Deskripsi / Profil Toko
+                  Deskripsi / Profil Toko *
                 </label>
                 <textarea
                   rows={3}
-                  className="w-full bg-[#F5F1E8] border border-[#D8D2C6] p-3 text-xs font-mono text-[#171717] focus:outline-none focus:border-[#171717] transition-colors"
-                  placeholder="Jelaskan spesialisasi produk atau filosofi desain toko Anda..."
+                  className={`w-full bg-[#F5F1E8] border p-3 text-xs font-mono text-[#171717] focus:outline-none transition-colors ${
+                    errors.description ? 'border-rose-500 bg-rose-50/30' : 'border-[#D8D2C6] focus:border-[#171717]'
+                  }`}
+                  placeholder="Jelaskan spesialisasi produk, material pilihan, atau filosofi desain toko Anda..."
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) => {
+                    setDescription(e.target.value);
+                    if (errors.description) setErrors((prev) => ({ ...prev, description: null }));
+                  }}
+                  required
                 />
+                {errors.description && (
+                  <p className="font-mono text-[11px] text-rose-600">⚠ {errors.description}</p>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Input
-                  label="Nomor Telepon / WhatsApp"
-                  placeholder="08123456789"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                />
-                <Input
-                  label="Kota / Lokasi Toko"
-                  placeholder="Jakarta Selatan"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                />
+                <div>
+                  <Input
+                    label="Nomor WhatsApp / Telepon Toko *"
+                    placeholder="Contoh: 08123456789"
+                    value={phone}
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      if (errors.phone) setErrors((prev) => ({ ...prev, phone: null }));
+                    }}
+                    required
+                  />
+                  {errors.phone && (
+                    <p className="font-mono text-[11px] text-rose-600 mt-1">⚠ {errors.phone}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Input
+                    label="Kota / Lokasi Operasional Toko *"
+                    placeholder="Contoh: Jakarta Selatan, DKI Jakarta"
+                    value={address}
+                    onChange={(e) => {
+                      setAddress(e.target.value);
+                      if (errors.address) setErrors((prev) => ({ ...prev, address: null }));
+                    }}
+                    required
+                  />
+                  {errors.address && (
+                    <p className="font-mono text-[11px] text-rose-600 mt-1">⚠ {errors.address}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Terms Checkbox */}
+              <div className="pt-2">
+                <label className="flex items-start gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={agreeTerms}
+                    onChange={(e) => {
+                      setAgreeTerms(e.target.checked);
+                      if (errors.agreeTerms) setErrors((prev) => ({ ...prev, agreeTerms: null }));
+                    }}
+                    className="mt-0.5 accent-[#171717] w-4 h-4"
+                  />
+                  <span className="font-mono text-xs text-[#171717] leading-relaxed">
+                    Saya menyatakan data toko di atas benar dan menyetujui seluruh{' '}
+                    <strong className="underline">Syarat &amp; Ketentuan Mitra Penjual AURA</strong> serta kewajiban pengiriman tepat waktu. *
+                  </span>
+                </label>
+                {errors.agreeTerms && (
+                  <p className="font-mono text-[11px] text-rose-600 mt-1 pl-7">⚠ {errors.agreeTerms}</p>
+                )}
               </div>
 
               <div className="pt-4 border-t border-[#D8D2C6]">
