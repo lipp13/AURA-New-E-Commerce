@@ -134,65 +134,32 @@ export const QRISPaymentModal = ({ isOpen, onClose, order, onPaymentSuccess }) =
                 </span>
               </div>
 
-              {/* QR Code Canvas */}
-              <div className="flex flex-col items-center justify-center p-6 bg-[#FFFFFF] border border-[#D8D2C6] rounded-sm space-y-4 shadow-inner">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-display font-black text-sm tracking-tighter text-[#171717]">AURA</span>
-                  <span className="font-mono text-[10px] uppercase tracking-widest text-[#6B675F]">QRIS STANDAR</span>
+              {/* Authentic Scannable QRIS Display */}
+              <div className="flex flex-col items-center justify-center p-4 bg-[#FFFFFF] border border-[#D8D2C6] rounded-sm space-y-3 shadow-inner">
+                <div className="w-full max-w-[280px] bg-white border border-[#E5E0D8] rounded-md p-1 shadow-sm overflow-hidden">
+                  <img
+                    src="/qris-real.png"
+                    alt="Kode Pembayaran QRIS Resmi - ayya (NMID: ID1026497930317)"
+                    className="w-full h-auto object-contain mx-auto"
+                  />
                 </div>
 
-                {/* Stylized QRIS SVG Graphic */}
-                <div className="relative p-2 bg-white border-2 border-[#171717]">
-                  <svg
-                    viewBox="0 0 200 200"
-                    className="w-48 h-48"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    {/* Background */}
-                    <rect width="200" height="200" fill="white" />
-                    {/* Outer corners / Finder patterns */}
-                    <rect x="10" y="10" width="50" height="50" fill="#171717" />
-                    <rect x="18" y="18" width="34" height="34" fill="white" />
-                    <rect x="26" y="26" width="18" height="18" fill="#171717" />
-
-                    <rect x="140" y="10" width="50" height="50" fill="#171717" />
-                    <rect x="148" y="18" width="34" height="34" fill="white" />
-                    <rect x="156" y="26" width="18" height="18" fill="#171717" />
-
-                    <rect x="10" y="140" width="50" height="50" fill="#171717" />
-                    <rect x="18" y="148" width="34" height="34" fill="white" />
-                    <rect x="26" y="156" width="18" height="18" fill="#171717" />
-
-                    {/* QR Code Data Dots Matrix simulation */}
-                    <path
-                      d="M70 15h10v10H70zm20 0h15v10H90zm25 0h10v10h-10zm-45 15h15v10H70zm30 0h15v10h-15zm-30 15h10v10H70zm20 0h20v10H90zm-75 30h10v10H15zm20 0h15v10H35zm25 0h10v10H60zm20 0h15v10H80zm25 0h15v10h-15zm25 0h10v10h-10zm20 0h15v10h-15zm-115 15h15v10H15zm30 0h10v10H45zm25 0h20v10H70zm30 0h15v10h-15zm25 0h15v10h-15zm-110 15h10v10H15zm20 0h15v10H35zm35 0h10v10H70zm30 0h15v10h-15zm20 0h15v10h-15zm20 0h15v10h-15zm-115 15h15v10H15zm30 0h10v10H45zm30 0h20v10H75zm30 0h10v10h-10zm20 0h15v10h-15zm-45 15h10v10H80zm20 0h15v10h-15zm25 0h10v10h-10zm-45 15h15v10H80zm25 0h15v10h-15zm25 0h10v10h-10zm-40 15h20v10H90zm30 0h15v10h-15z"
-                      fill="#171717"
-                    />
-
-                    {/* Center Brand Monogram */}
-                    <rect x="82" y="82" width="36" height="36" fill="#FAF8F2" stroke="#171717" strokeWidth="2" />
-                    <text
-                      x="100"
-                      y="105"
-                      fontFamily="sans-serif"
-                      fontSize="14"
-                      fontWeight="bold"
-                      textAnchor="middle"
-                      fill="#171717"
-                    >
-                      A
-                    </text>
-                  </svg>
-                </div>
-
-                <div className="text-center space-y-0.5">
-                  <p className="font-mono text-[11px] font-bold text-[#171717] tracking-wider uppercase">
-                    AURA / OBJEK OFFICIAL
-                  </p>
+                <div className="text-center space-y-1">
+                  <div className="flex items-center justify-center gap-1.5 font-mono text-xs font-bold text-[#171717] tracking-wider uppercase">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Merchant Resmi: ayya</span>
+                  </div>
                   <p className="font-mono text-[10px] text-[#6B675F]">
-                    NMID: ID1024883920199 • Diterima di Seluruh Dompet Digital
+                    NMID: <span className="font-bold text-[#171717]">ID1026497930317</span> • Dicetak: 93600915
                   </p>
+                  <a
+                    href="/qris-real.png"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block font-mono text-[10px] text-[#F4512A] hover:underline pt-0.5"
+                  >
+                    [Buka Gambar Penuh / Simpan ke Galeri HP]
+                  </a>
                 </div>
               </div>
 
