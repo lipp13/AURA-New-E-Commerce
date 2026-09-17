@@ -1,7 +1,7 @@
 // src/services/api.js
 // Centralized HTTP API client for backend integration
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://e-commerce-be-dun.vercel.app/';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://backend-aura-seven.vercel.app/api';
 
 class ApiClient {
   constructor(baseUrl) {
@@ -9,7 +9,7 @@ class ApiClient {
     if (clean && !clean.endsWith('/api')) {
       clean = `${clean}/api`;
     }
-    this.baseUrl = clean || 'https://e-commerce-be-dun.vercel.app/';
+    this.baseUrl = clean || 'https://backend-aura-seven.vercel.app/api';
   }
 
   getToken() {
